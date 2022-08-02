@@ -76,7 +76,7 @@ with tab_sird:
         help="Treated to Recovery Rate",
     )
 
-    eta1 = col16.number_input(
+    omega = col16.number_input(
         "Omega",
         min_value=0.001,
         max_value=1.0,
@@ -86,7 +86,7 @@ with tab_sird:
         help="Recidivism from Treatment Rate",
     )
 
-    eta2 = col17.number_input(
+    eta = col17.number_input(
         "Eta",
         min_value=0.001,
         max_value=1.0,

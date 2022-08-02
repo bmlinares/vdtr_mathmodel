@@ -140,7 +140,7 @@ with tab_sird:
 
     if st.button("Run DINN"):
         with st.spinner('Wait for it...'):
-            error_df, fig = run(N, alpha, beta, gamma, p, delta, eta1, eta2, mu, iterations, layers, neurons)
+            error_df, fig = run(N, alpha, beta, gamma, p, delta, omega, eta, mu, iterations, layers, neurons)
             st.pyplot(fig)
             st.table(error_df)
 

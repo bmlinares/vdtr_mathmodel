@@ -8,7 +8,7 @@ st.set_page_config(
      layout="wide",
 )
 
-st.title("COVID-19 and Disease Informed Neural Networks")
+st.title("A Mathematical Model for Understanding and Predicting Dynamics of Depression as an Epidemic")
 
 tab_sird, tab_help = st.tabs(["VDTR", "Help"])
 
@@ -16,15 +16,15 @@ with tab_sird:
 
     st.latex(r"""
         \begin{align*}
-        \frac{dS}{dt} &= - \frac{\beta}{N}  S I \\
-        \frac{dI}{dt} &= \frac{\beta}{N} S I - \omega  I - \gamma I \\
-        \frac{dR}{dt} &= \omega I \\
-        \frac{dD}{dt} &= \gamma I \\
+        \frac{dV}{dt} &= \alpha N - \frac{\beta}{N}  V D + \omega T + \eta R - mu V \\
+        \frac{dD}{dt} &= \frac{\beta}{N} V D - \gamma  D - \mu D \\
+        \frac{dT}{dt} &= \p gamma D - \delta T - \omega T - \mu T \\
+        \frac{dR}{dt} &= \(1-p) gamma D + \delta T - \eta R - \mu R \\
         \end{align*}
     """
     )
 
-    col11, col12, col13, col14 = st.columns(4)
+    col11, col12, col13, col14, col15, col16, col17, col18 = st.columns(8)
 
     N = col11.number_input(
         "N",
@@ -36,36 +36,75 @@ with tab_sird:
         help="Population",
     )
 
-    beta = col12.number_input(
+    alpha = col12.number_input(
+        "Alpha",
+        min_value=0.001,
+        max_value=1.0,
+        value=0.1,
+        step=0.001,
+        format=None,
+        help="Recruitment Rate",
+    )
+
+    beta = col13.number_input(
         "Beta",
         min_value=0.001,
         max_value=1.0,
-        value=0.5,
+        value=0.9,
         step=0.001,
         format=None,
         help="Transmission Rate",
     )
 
-    gamma = col13.number_input(
-        "gamma",
+    p = col14.number_input(
+        "p",
         min_value=0.001,
         max_value=1.0,
-        value=1 / 14,
+        value=0.3,
         step=0.001,
         format=None,
-        help="Rate at which Infected individuals become Recovered",
+        help="Probability Rate",
     )
 
-    alpha = col14.number_input(
-        "Alpha",
+    delta = col15.number_input(
+        "Delta",
         min_value=0.001,
         max_value=1.0,
-        value=1 / 5,
+        value=0,1,
         step=0.001,
         format=None,
-        help="Rate at which Infected individuals become Dead",
+        help="Treated to Recovery Rate",
     )
 
+    eta1 = col16.number_input(
+        "Omega",
+        min_value=0.001,
+        max_value=1.0,
+        value=0.1,
+        step=0.001,
+        format=None,
+        help="Recidivism from Treatment Rate",
+    )
+
+    eta2 = col17.number_input(
+        "Eta",
+        min_value=0.001,
+        max_value=1.0,
+        value=0.1,
+        step=0.001,
+        format=None,
+        help="Recidivism from Recovery Rate",
+    )
+
+    mu = col18.number_input(
+        "Mu",
+        min_value=0.001,
+        max_value=1.0,
+        value=0.1,
+        step=0.001,
+        format=None,
+        help="Withdraw Rate",
+    )
     
     col21, col22, col23 = st.columns(3)
 
@@ -101,11 +140,6 @@ with tab_sird:
 
     if st.button("Run DINN"):
         with st.spinner('Wait for it...'):
-            p = 0.1
-            delta = 0.1
-            eta1 = 0.1
-            eta2 = 0.1
-            mu = 0.1
             error_df, fig = run(N, alpha, beta, gamma, p, delta, eta1, eta2, mu, iterations, layers, neurons)
             st.pyplot(fig)
             st.table(error_df)

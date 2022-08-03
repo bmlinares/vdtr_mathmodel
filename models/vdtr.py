@@ -20,16 +20,16 @@ def vdtr_model(
     gamma,
     p,
     delta,
-    eta1,
-    eta2,
+    omega,
+    eta,
     mu,
 ):
     def func(y, t):
         V, D, T, R = y
-        dV = alpha * N - (beta * V * D) / N + eta1 * T + eta2 * R - mu * V
+        dV = alpha * N - (beta * V * D) / N + omega * T + eta * R - mu * V
         dD = (beta * V * D) / N - gamma * D - mu * D
-        dT = p * gamma * D - delta * T - eta1 * T - mu * T
-        dR = (1 - p) * gamma * D + delta * T - eta2 * R - mu * R
+        dT = p * gamma * D - delta * T - omega * T - mu * T
+        dR = (1 - p) * gamma * D + delta * T - eta * R - mu * R
         return [dV, dD, dT, dR]
     
     V_0= N - 1
@@ -48,10 +48,10 @@ def dinn(data_t, data_y, N, iterations, layers, neurons):
     gamma = tf.math.sigmoid(dde.Variable(0.1))
     p = tf.math.sigmoid(dde.Variable(0.1))
     delta = tf.math.sigmoid(dde.Variable(0.1))
-    eta1 = tf.math.sigmoid(dde.Variable(0.1))
-    eta2 = tf.math.sigmoid(dde.Variable(0.1))
+    omega = tf.math.sigmoid(dde.Variable(0.1))
+    eta = tf.math.sigmoid(dde.Variable(0.1))
     mu = tf.math.sigmoid(dde.Variable(0.1))
-    variable_list = [alpha, beta, gamma, p, delta, eta1,  eta2, mu]
+    variable_list = [alpha, beta, gamma, p, delta, omega,  eta, mu]
     
     # ODE model
     def ODE(t, y):
@@ -66,10 +66,10 @@ def dinn(data_t, data_y, N, iterations, layers, neurons):
         dR_t = dde.grad.jacobian(y, t, i=3)
 
         return [
-            dV_t - (alpha * N - (beta * V * D) / N + eta1 * T + eta2 * R - mu * V),
+            dV_t - (alpha * N - (beta * V * D) / N + omega * T + eta * R - mu * V),
             dD_t - ((beta * V * D) / N - gamma * D - mu * D),
-            dT_t - (p * gamma * D - delta * T - eta1 * T - mu * T),
-            dR_t - ((1 - p) * gamma * D + delta * T - eta2 * R - mu * R)
+            dT_t - (p * gamma * D - delta * T - omega * T - mu * T),
+            dR_t - ((1 - p) * gamma * D + delta * T - eta * R - mu * R)
         ]
     
     # Geometry
@@ -116,30 +116,24 @@ def dinn(data_t, data_y, N, iterations, layers, neurons):
         t = t / data_t[-1, 0]
         return t
 
-    # def output_transform(t, y):
-    #     # return tf.constant([1, 1, 1e2, 1, 1, 1]) * y
-    #     return tf.abs(y)
-
     net.apply_feature_transform(feature_transform)
-    # net.apply_output_transform(output_transform)
     
     model = dde.Model(data, net)
     model.compile(
         "adam",
         lr=1e-3,
-        loss_weights=4 * [1] + 4 * [1] + 4 * [1e1],
+        loss_weights=4 * [1] + 4 * [1] + 4 * [1],
         external_trainable_variables=variable_list
     )
     variable = dde.callbacks.VariableValue(
         variable_list,
         period=5000
     )
-    losshistory, train_state = model.train(
+    _, _ = model.train(
         iterations=iterations,
         display_every=1000,
         callbacks=[variable]
       )
-    # dde.saveplot(losshistory, train_state, issave=True, isplot=True)
     return model, variable
 
     
@@ -150,8 +144,8 @@ def error(parameters_real, parameters_pred):
     "gamma",
     "p",
     "delta",
-    "eta1",
-    "eta2",
+    "omega",
+    "eta",
     "mu",
 ]
     errors = (
@@ -191,7 +185,6 @@ def plot(data_pred, data_real):
 
     (
         g.set_axis_labels("Time", "Population")
-        .set_titles("Zone {row_name}")
         .tight_layout(w_pad=1)
     )
 
@@ -201,11 +194,11 @@ def plot(data_pred, data_real):
     return g
 
 
-def run(N, alpha, beta, gamma, p, delta, eta1, eta2, mu, iterations, layers, neurons):
+def run_dinn(N, alpha, beta, gamma, p, delta, omega, eta, mu, iterations, layers, neurons):
 
     names = list("VDTR")
-    t = np.arange(0, 366, 7)[:, np.newaxis]
-    y = vdtr_model(np.ravel(t), N, alpha, beta, gamma, p, delta, eta1, eta2, mu)
+    t = np.arange(0, 366, 3)[:, np.newaxis]
+    y = vdtr_model(np.ravel(t), N, alpha, beta, gamma, p, delta, omega, eta, mu)
     data_real = (
         pd.DataFrame(y, columns=names, index=t.ravel())
         .rename_axis("time")
@@ -224,13 +217,43 @@ def run(N, alpha, beta, gamma, p, delta, eta1, eta2, mu, iterations, layers, neu
         .melt(id_vars="time", var_name="status", value_name="population")
     )
 
-    parameters_real = [alpha, beta, gamma, p, delta, eta1, eta2, mu]
+    parameters_real = [alpha, beta, gamma, p, delta, omega, eta, mu]
     parameters_pred = variable.value
     error_df = error(parameters_real, parameters_pred)
     fig = plot(data_pred, data_real)
 
     return error_df, fig
 
+
+def run_forward(N, alpha, beta, gamma, p, delta, omega, eta, mu):
+    names = list("VDTR")
+    t = np.arange(0, 366, 7)[:, np.newaxis]
+    y = vdtr_model(np.ravel(t), N, alpha, beta, gamma, p, delta, omega, eta, mu)
+    data_real = (
+        pd.DataFrame(y, columns=names, index=t.ravel())
+        .rename_axis("time")
+        .reset_index()
+        .melt(id_vars="time", var_name="status", value_name="population")
+    )
+
+    g = sns.relplot(
+        data=data_real,
+        x="time",
+        y="population",
+        hue="status",
+        kind="line",
+        aspect=2,
+    )
+
+    (
+        g.set_axis_labels("Time", "Population")
+        .tight_layout(w_pad=1)
+    )
+
+    g._legend.set_title("Status")
+    g.fig.subplots_adjust(top=0.9)
+    g.fig.suptitle(f"VDTR forward solution")
+    return g
 
 if __name__ == "__main__":
     N = 1001
@@ -239,12 +262,12 @@ if __name__ == "__main__":
     gamma = 0.3
     p = 0.1
     delta = 0.1
-    eta1 = 0.1
-    eta2 = 0.1
+    omega = 0.1
+    eta = 0.1
     mu = 0.1
     iterations = 50000
     layers = 3
     neurons = 64
-    error_df, fig = run(N, beta, omega, gamma, iterations, layers, neurons)
+    error_df, fig = run_dinn(N, alpha, beta, gamma, p, delta, omega, eta, mu, iterations, layers, neurons)
     plt.show()
     print(error_df)
